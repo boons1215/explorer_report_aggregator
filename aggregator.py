@@ -11,7 +11,7 @@ def file_check(file):
 
     try: 
         df = pd.read_csv(file)
-        if df.columns[0] == 'Consumer IP':  # for 21.1 PCE version
+        if df.columns[0] == 'Consumer IP': # first column always this column
             return True
         else:
             return False
@@ -27,7 +27,9 @@ def csv_formatter(df):
     df.fillna({'consumer_role': 'NO_LABEL', 'consumer_app': 'NO_LABEL', 'consumer_env': 'NO_LABEL', 'consumer_loc': 'NO_LABEL'}, inplace=True)
     df.fillna({'provider_role': 'NO-LABEL', 'provider_app': 'NO_LABEL', 'provider_env': 'NO_LABEL', 'provider_loc': 'NO_LABEL'}, inplace=True)
 
-def combine_aggroup_column(formatted_df):
+    return df 
+
+def combine_aggroup_column(df):
     # create new columns to combine appgroup with location
     df['consumer_appgroup_combined'] = df['consumer_role'] + " | " + df['consumer_app'] + " | " + df['consumer_env'] + " | " + df['consumer_loc']
     df['provider_appgroup_combined'] = df['provider_role'] + " | " + df['provider_app'] + " | " + df['provider_env'] + " | " + df['provider_loc']
@@ -36,7 +38,9 @@ def combine_aggroup_column(formatted_df):
     df['consumer_appgroup_combined'].replace(['NO_LABEL | NO_LABEL | NO_LABEL | NO_LABEL'], np.nan, regex=True, inplace=True)
     df['provider_appgroup_combined'].replace(['NO_LABEL | NO_LABEL | NO_LABEL | NO_LABEL'], np.nan, regex=True, inplace=True)
 
-def determine_iplist_or_vens_rows(updated_df):
+    return df
+
+def determine_iplist_or_vens_rows(df):
     # if either one column below is NaN, identify the row has iplist
     df_src_iplist = df.loc[(df['consumer_appgroup_combined'].isna()) & (df['provider_appgroup_combined'].notna())]
     df_dst_iplist = df.loc[(df['consumer_appgroup_combined'].notna()) & (df['provider_appgroup_combined'].isna())]
@@ -101,8 +105,6 @@ def both_vens_result(df_both_vens):
 
 # might need 19.3 parser also
 # first data seen and last data seen, even aggregate
-
-
 if not file_check(sys.argv[1]):
     print("File is invalid or 0 byte.")
     exit(1)
@@ -121,8 +123,12 @@ both_are_ven_report = both_vens_result(df_both_vens_result)
 both_vens_intrascope = both_vens_result(df_both_vens_intrascope_result)
 both_vens_extrascope = both_vens_result(df_both_vens_extrascope_result)
 
+
 print(consumer_as_iplist_report)
-consumer_as_iplist_report.to_csv('test.csv')
+
+# consumer_as_iplist_report.to_csv('test.csv')
+
+
 # export as HTML
 # html_string = '''
 # <html>
