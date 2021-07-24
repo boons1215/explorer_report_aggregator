@@ -48,11 +48,13 @@ def determine_iplist_or_vens_rows(df, system_or_draft):
 
     if system_or_draft == 0:
         # sanitize the output for consumer iplist rows
+        # sample cols: ['transmission', 'port', 'protocol', 'reported_policy_decision', 'reported_by', 'first_detected', 'last_detected', 'num_flows']
         df_src_iplist_result = df_src_iplist[SRC_IPL_COLS + common_cols].copy()
         # sanitize the output for provider iplist rows
         df_dst_iplist_result = df_dst_iplist[DST_IPL_COLS + common_cols].copy()
     else:
         common_cols.insert(4, 'draft_policy_decision')
+        # sample cols: ['transmission', 'port', 'protocol', 'reported_policy_decision', 'draft_policy_decision', 'reported_by', 'first_detected', 'last_detected', 'num_flows']
         # sanitize the output for consumer iplist rows, include draft_policy_decision column
         df_src_iplist_result = df_src_iplist[SRC_IPL_COLS + common_cols].copy()
         # sanitize the output for provider iplist rows
@@ -73,14 +75,13 @@ def consumer_as_iplist_result(df_src_iplist_result, system_or_draft):
     # trim the last octet of IP address for better aggregate and dedup as subnet format instead of IP for consumer as iplist
     df_src_iplist_result['consumer_ip'] = df_src_iplist_result['consumer_ip'].str.replace(r'\.\d+$', '.0', regex=True)
 
-    if system_or_draft == 0:
-        # sorting
-        df_src_iplist_result.sort_values(SRC_IPL_COLS + common_cols[0:5], ascending=[True, True, True, True, True, True, True, True], inplace=True)
-        # sum the num_of_flows when aggregating
-        df_src_iplist_result = df_src_iplist_result.groupby(SRC_IPL_COLS + common_cols[0:5], axis=0, as_index=True).sum()
-    else:
-        df_src_iplist_result.sort_values(SRC_IPL_COLS + common_cols[0:6], ascending=[True, True, True, True, True, True, True, True, True], inplace=True)
-        df_src_iplist_result = df_src_iplist_result.groupby(SRC_IPL_COLS + common_cols[0:6], axis=0, as_index=True).sum()
+    cols = SRC_IPL_COLS + common_cols[:-3]
+    number_of_sort = len(cols) * ["True"]
+
+    # sorting
+    df_src_iplist_result.sort_values(cols, ascending=number_of_sort, inplace=True)
+    # aggregate the common flows then list the first detected and last detected with a sum of num of flows
+    df_src_iplist_result = df_src_iplist_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_src_iplist_result
 
@@ -88,14 +89,13 @@ def provider_as_iplist_result(df_dst_iplist_result, system_or_draft):
     # trim the last octet of IP address for better aggregate and dedup as subnet format instead of IP for provider as iplist
     df_dst_iplist_result['provider_ip'] = df_dst_iplist_result['provider_ip'].str.replace(r'\.\d+$', '.0', regex=True)
 
-    if system_or_draft == 0:
-        # sorting
-        df_dst_iplist_result.sort_values(DST_IPL_COLS + common_cols[0:5], ascending=[True, True, True, True, True, True, True, True], inplace=True)
-        # sum the num_of_flows when aggregating
-        df_dst_iplist_result = df_dst_iplist_result.groupby(DST_IPL_COLS + common_cols[0:5], axis=0, as_index=True).sum()
-    else:
-        df_dst_iplist_result.sort_values(DST_IPL_COLS + common_cols[0:6], ascending=[True, True, True, True, True, True, True, True, True], inplace=True)
-        df_dst_iplist_result = df_dst_iplist_result.groupby(DST_IPL_COLS + common_cols[0:6], axis=0, as_index=True).sum()
+    cols = DST_IPL_COLS + common_cols[:-3]
+    number_of_sort = len(cols) * ["True"]
+
+    # sorting
+    df_dst_iplist_result.sort_values(cols, ascending=number_of_sort, inplace=True)
+    # aggregate the common flows then list the first detected and last detected with a sum of num of flows
+    df_dst_iplist_result = df_dst_iplist_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_dst_iplist_result
 
@@ -103,14 +103,13 @@ def both_vens_result(df_both_vens, system_or_draft):
     # sanitize the output for both sides are VENs
     df_both_vens_result = df_both_vens.copy()
 
-    if system_or_draft == 0:
-        # sorting
-        df_both_vens_result.sort_values(DST_IPL_COLS[0:1] + SRC_IPL_COLS[2:3] + common_cols[0:5], ascending=[True, True, True, True, True, True, True], inplace=True)
-        # sum the num_of_flows when aggregating
-        df_both_vens_result = df_both_vens_result.groupby(SRC_IPL_COLS[2:3] + DST_IPL_COLS[0:1] + common_cols[0:5], axis=0, as_index=True).sum()
-    else:
-        df_both_vens_result.sort_values(DST_IPL_COLS[0:1] + SRC_IPL_COLS[2:3] + common_cols[0:6], ascending=[True, True, True, True, True, True, True, True], inplace=True)
-        df_both_vens_result = df_both_vens_result.groupby(SRC_IPL_COLS[2:3] + DST_IPL_COLS[0:1] + common_cols[0:6], axis=0, as_index=True).sum()
+    cols = DST_IPL_COLS[0:4] + SRC_IPL_COLS[2:3] + SRC_IPL_COLS[3::] + common_cols[:-3]
+    number_of_sort = len(cols) * ["True"]
+
+    # sorting
+    df_both_vens_result.sort_values(cols, ascending=number_of_sort, inplace=True)
+    # aggregate the common flows then list the first detected and last detected with a sum of num of flows
+    df_both_vens_result = df_both_vens_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_both_vens_result
 
@@ -131,9 +130,9 @@ except Exception:
     exit(1)
 
 # columns variable
-SRC_IPL_COLS = ['consumer_ip', 'consumer_iplist', 'provider_appgroup_combined']
-DST_IPL_COLS = ['consumer_appgroup_combined', 'provider_ip', 'provider_iplist']
-common_cols = ['transmission', 'port', 'protocol', 'reported_policy_decision', 'reported_by', 'num_flows']
+SRC_IPL_COLS = ['consumer_ip', 'consumer_iplist', 'provider_appgroup_combined', 'provider_app', 'provider_env', 'provider_loc']
+DST_IPL_COLS = ['consumer_appgroup_combined', 'consumer_app', 'consumer_env', 'consumer_loc', 'provider_ip', 'provider_iplist']
+common_cols = ['transmission', 'port', 'protocol', 'reported_policy_decision', 'reported_by', 'first_detected', 'last_detected', 'num_flows']
 
 # Process formatter
 updated_df, system_or_draft = combine_aggroup_column(csv_formatter(df))
@@ -143,14 +142,23 @@ df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_in
 # reports
 consumer_as_iplist_report = consumer_as_iplist_result(df_src_iplist_result, system_or_draft)
 provider_as_iplist_report = provider_as_iplist_result(df_dst_iplist_result, system_or_draft)
-
 # this report combines both intra/extrascope as raw
 both_are_ven_report = both_vens_result(df_both_vens_result, system_or_draft)
-both_vens_intrascope = both_vens_result(df_both_vens_intrascope_result, system_or_draft)
-both_vens_extrascope = both_vens_result(df_both_vens_extrascope_result, system_or_draft)
+both_vens_intrascope_report = both_vens_result(df_both_vens_intrascope_result, system_or_draft)
+both_vens_extrascope_report = both_vens_result(df_both_vens_extrascope_result, system_or_draft)
 
-print(both_vens_extrascope)
+# print(both_vens_intrascope_report)
+both_vens_intrascope_report.to_csv('test.csv')
+# # print(both_vens_intrascope_report)
+# print(consumer_as_iplist_report.shape)
+# print(provider_as_iplist_report.shape)
+# print(both_are_ven_report.shape)
+# print(both_vens_intrascope_report.shape)
+# print(both_vens_extrascope_report.shape)
+
 # consumer_as_iplist_report.to_csv('test.csv')
+
+# consumer_as_iplist_report.to_csv('test.csv', index=false)
 
 # # export as HTML
 # html_string = '''
