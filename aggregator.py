@@ -1,10 +1,9 @@
 # Source: https://github.com/boons1215/explorer_report_aggregator
-import sys, os, dash
+import sys, os, datetime, dash
 import pandas as pd
 import numpy as np
 import dash_core_components as dcc
 import dash_html_components as html
-
 
 def csv_formatter(df):
     # update the column name to all lower cap and without space
@@ -14,6 +13,9 @@ def csv_formatter(df):
     # fill value if the column is empty
     df.fillna({'consumer_role': 'NO_LABEL', 'consumer_app': 'NO_LABEL', 'consumer_env': 'NO_LABEL', 'consumer_loc': 'NO_LABEL'}, inplace=True)
     df.fillna({'provider_role': 'NO-LABEL', 'provider_app': 'NO_LABEL', 'provider_env': 'NO_LABEL', 'provider_loc': 'NO_LABEL'}, inplace=True)
+
+    # rename the column since we only track the subnet instead of IP
+    df.rename(columns={'consumer_ip': 'consumer_subnet', 'provider_ip': 'provider_subnet'}, inplace=True)
 
     return df
 
@@ -33,7 +35,7 @@ def combine_aggroup_column(df):
     # in 21.2, there is backend report which not having draft policy decision column and report upto 200k
     # Explorer gernerated report has draft policy and only upto 100k
     system_or_draft = 1
-    if "consumer_ip" in list(df.columns.values) and "reported_policy_decision" in list(df.columns.values) and "draft_policy_decision" not in list(df.columns.values):
+    if "consumer_subnet" in list(df.columns.values) and "reported_policy_decision" in list(df.columns.values) and "draft_policy_decision" not in list(df.columns.values):
         print("\nNOTE: The imported report is returned from the database directly in PCE 21.2.")
         print("\"Draft Policy Decision\" column is not included.")
         print("If you need this column, generate the report again in the \"Draft Policy\" Explorer view.\n")
@@ -71,9 +73,9 @@ def determine_iplist_or_vens_rows(df, system_or_draft):
 
     return df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result
 
-def consumer_as_iplist_result(df_src_iplist_result, system_or_draft):
+def consumer_as_iplist_result(df_src_iplist_result):
     # trim the last octet of IP address for better aggregate and dedup as subnet format instead of IP for consumer as iplist
-    df_src_iplist_result['consumer_ip'] = df_src_iplist_result['consumer_ip'].str.replace(r'\.\d+$', '.0', regex=True)
+    df_src_iplist_result['consumer_subnet'] = df_src_iplist_result['consumer_subnet'].str.replace(r'\.\d+$', '.0', regex=True)
 
     cols = SRC_IPL_COLS + common_cols[:-3]
     number_of_sort = len(cols) * ["True"]
@@ -85,9 +87,9 @@ def consumer_as_iplist_result(df_src_iplist_result, system_or_draft):
 
     return df_src_iplist_result
 
-def provider_as_iplist_result(df_dst_iplist_result, system_or_draft):
+def provider_as_iplist_result(df_dst_iplist_result):
     # trim the last octet of IP address for better aggregate and dedup as subnet format instead of IP for provider as iplist
-    df_dst_iplist_result['provider_ip'] = df_dst_iplist_result['provider_ip'].str.replace(r'\.\d+$', '.0', regex=True)
+    df_dst_iplist_result['provider_subnet'] = df_dst_iplist_result['provider_subnet'].str.replace(r'\.\d+$', '.0', regex=True)
 
     cols = DST_IPL_COLS + common_cols[:-3]
     number_of_sort = len(cols) * ["True"]
@@ -99,7 +101,7 @@ def provider_as_iplist_result(df_dst_iplist_result, system_or_draft):
 
     return df_dst_iplist_result
 
-def both_vens_result(df_both_vens, system_or_draft):
+def both_vens_result(df_both_vens):
     # sanitize the output for both sides are VENs
     df_both_vens_result = df_both_vens.copy()
 
@@ -112,6 +114,18 @@ def both_vens_result(df_both_vens, system_or_draft):
     df_both_vens_result = df_both_vens_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_both_vens_result
+
+def reports_output(consumer_iplist_report, provider_iplist_report, intrascope_report, extrascope_report):
+    df_dict = {
+        "consumer_iplist_report": consumer_iplist_report,
+        "provider_iplist_report": provider_iplist_report,
+        "intrascope_report": intrascope_report,
+        "extrascope_report": extrascope_report
+    }
+
+    for key, value in df_dict.items():
+        x = '{}'.format(key)
+        value.to_csv(x + datestr + ".csv")
 
 
 if os.stat(sys.argv[1]).st_size == 0:
@@ -130,26 +144,25 @@ except Exception:
     exit(1)
 
 # columns variable
-SRC_IPL_COLS = ['consumer_ip', 'consumer_iplist', 'provider_appgroup_combined', 'provider_app', 'provider_env', 'provider_loc']
-DST_IPL_COLS = ['consumer_appgroup_combined', 'consumer_app', 'consumer_env', 'consumer_loc', 'provider_ip', 'provider_iplist']
+SRC_IPL_COLS = ['consumer_subnet', 'consumer_iplist', 'provider_appgroup_combined', 'provider_app', 'provider_env', 'provider_loc']
+DST_IPL_COLS = ['consumer_appgroup_combined', 'consumer_app', 'consumer_env', 'consumer_loc', 'provider_subnet', 'provider_iplist']
 common_cols = ['transmission', 'port', 'protocol', 'reported_policy_decision', 'reported_by', 'first_detected', 'last_detected', 'num_flows']
 
 # Process formatter
+datestr = datetime.date.today().strftime("%Y%m%d")
 updated_df, system_or_draft = combine_aggroup_column(csv_formatter(df))
 
 df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result = determine_iplist_or_vens_rows(updated_df, system_or_draft)
 
-# reports
-consumer_as_iplist_report = consumer_as_iplist_result(df_src_iplist_result, system_or_draft)
-provider_as_iplist_report = provider_as_iplist_result(df_dst_iplist_result, system_or_draft)
-# this report combines both intra/extrascope as raw
-both_are_ven_report = both_vens_result(df_both_vens_result, system_or_draft)
-both_vens_intrascope_report = both_vens_result(df_both_vens_intrascope_result, system_or_draft)
-both_vens_extrascope_report = both_vens_result(df_both_vens_extrascope_result, system_or_draft)
+# reporting
+reports_output(consumer_as_iplist_result(df_src_iplist_result), provider_as_iplist_result(df_dst_iplist_result), both_vens_result(df_both_vens_intrascope_result), both_vens_result(df_both_vens_extrascope_result))
+
+
+
 
 # print(both_vens_intrascope_report)
-both_vens_intrascope_report.to_csv('test.csv')
-# # print(both_vens_intrascope_report)
+# # both_vens_intrascope_report.to_csv('test.csv')
+# # # print(both_vens_intrascope_report)
 # print(consumer_as_iplist_report.shape)
 # print(provider_as_iplist_report.shape)
 # print(both_are_ven_report.shape)
