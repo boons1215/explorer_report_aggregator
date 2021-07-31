@@ -1,13 +1,13 @@
 # Source: https://github.com/boons1215/explorer_report_aggregator
 from datetime import date
 from numpy import nan 
-from os import stat, system
+from os import stat
 from sys import argv
 from base64 import b64decode
 from io import StringIO, BytesIO
 from dash.dependencies import Input, Output, State
 import pandas as pd
-import dash, dash_table
+import dash, dash_table, argparse
 import dash_html_components as html
 import dash_core_components as dcc
 import plotly.express as px
@@ -285,192 +285,225 @@ def parse_contents(contents, filename):
         html.Div(id='bar-container')
     ])
 
+def upload_function():
+    # Upload function for dash table
+    app.layout = html.Div([
+        dcc.Upload(
+            id='upload-data',
+            children=html.Div([
+                'Drag and Drop or ',
+                html.A('Select Files'),
+                html.Br(),
+                'Refresh page before uploading a CSV'
+            ]),
+            style={
+                'width': '100%',
+                'height': '60px',
+                'lineHeight': '60px',
+                'borderWidth': '1px',
+                'borderStyle': 'dashed',
+                'borderRadius': '5px',
+                'textAlign': 'center',
+                'margin': '10px', 
+                'font-family': '-apple-system, BlinkMacSystemFont, sans-serif',
+                'color' :'#DFDEDF',
+                'fontWeight': 'bold'
+            },
+            # Allow multiple files to be uploaded
+            multiple=True
+        ),
+        html.Div(id='output-data-upload'),
+    ])
 
-# init check
-try: 
-    if stat(argv[1]).st_size == 0:
-        print("File is invalid or 0 byte.")
-        exit(1)
-    elif 'csv' in argv[1]:
-        df = pd.read_csv(argv[1], low_memory=False)
-        if df.columns[0] == 'Consumer IP': # first column always this 
-            pass
-        else:
-            print("File is invalid or 0 byte.")
-            exit(1)
-    else:
-        print("File is invalid or 0 byte.")
-        exit(1)
-except Exception:
-    print("File is invalid or 0 byte.")
-    exit(1)
+    return app.layout
+
+def dash_table_output(app_layout):
+    # Dash-table call the table output to parse_contents function
+    @app.callback(Output('output-data-upload', 'children'),
+                Input('upload-data', 'contents'),
+                State('upload-data', 'filename'))
+    def update_output(list_of_contents, list_of_names):
+        if list_of_contents is not None:
+            children = [
+                parse_contents(c, n) for c, n in
+                zip(list_of_contents, list_of_names)]
+            return children
+
+def bar_chart_output(table_layout):
+    # Create bar chart
+    @app.callback(
+        Output(component_id='bar-container', component_property='children'),
+        [Input(component_id='datatable-interactivity', component_property="derived_virtual_data"),
+        Input(component_id='datatable-interactivity', component_property='derived_virtual_selected_rows'),
+        Input(component_id='datatable-interactivity', component_property='derived_virtual_selected_row_ids'),
+        Input(component_id='datatable-interactivity', component_property='selected_rows'),
+        Input(component_id='datatable-interactivity', component_property='derived_virtual_indices'),
+        Input(component_id='datatable-interactivity', component_property='derived_virtual_row_ids'),
+        Input(component_id='datatable-interactivity', component_property='active_cell'),
+        Input(component_id='datatable-interactivity', component_property='selected_cells'),
+        Input(component_id='datatable-interactivity', component_property='selected_row_ids')]
+    )
+    def update_bar(all_rows_data, slctd_row_indices, slct_rows_names, slctd_rows,
+                order_of_rows_indices, order_of_rows_names, actv_cell, slctd_cell, selected_row_ids):
+        print('***************************************************************************')
+        print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
+        print('---------------------------------------------')
+        print("Indices of selected rows if part of table after filtering:{}".format(slctd_row_indices))
+        print("Names of selected rows if part of table after filtering: {}".format(slct_rows_names))
+        print("Indices of selected rows regardless of filtering results: {}".format(slctd_rows))
+        print('---------------------------------------------')
+        print("Indices of all rows pre or post filtering: {}".format(order_of_rows_indices))
+        print("Names of all rows pre or post filtering: {}".format(order_of_rows_names))
+        print("---------------------------------------------")
+        print("Complete data of active cell: {}".format(actv_cell))
+        print("Complete data of all selected cells: {}".format(slctd_cell))
+
+        dff = pd.DataFrame(all_rows_data)
+        # Ref: https://github.com/Coding-with-Adam/Dash-by-Plotly/blob/master/DataTable/datatable_intro_and_sort.py
+        # highlight the color when select the row and click the column
+        # selected_id_set = set(selected_row_ids or [])
+        # active_row_id = actv_cell['row_id'] if actv_cell else None
+        # colors = ['#FF69B4' if id == active_row_id  
+        #           else '#45cbff' if id in selected_id_set
+        #           else '#0a075d'
+        #           for id in range(len(dff))]
+
+        # for intrascope and extrascope dataframe
+        if "consumer_appgroup_combined" in dff and "provider_appgroup_combined" in dff and "num_flows" in dff:
+            return [
+                dcc.Graph(id='bar-chart',
+                            figure=px.bar(
+                                data_frame=dff,
+                                x='num_flows',
+                                y="consumer_appgroup_combined",
+                                color="reported_policy_decision",
+                                color_discrete_map={
+                                    'Allowed': '#508104',
+                                    'Blocked': '#b64201',
+                                    'Potentially Blocked': '#db8200',
+                                    'Unknown': '#4a4a4a'
+                                },
+                                barmode="stack",
+                                height=700,
+                                labels={"num_flows": "Number of Flows based on Provider App Groups"}
+                            ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#1c2841", plot_bgcolor="#1c2841", newshape_line_width=1, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
+                            .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
+                        )
+            ]
+        
+        # for consumer is iplist dataframe
+        if "consumer_iplist" in dff and "num_flows" in dff:
+            return [
+                dcc.Graph(id='bar-chart',
+                            figure=px.bar(
+                                data_frame=dff,
+                                x='num_flows',
+                                y="consumer_iplist",
+                                color="reported_policy_decision",
+                                color_discrete_map={
+                                    'Allowed': '#508104',
+                                    'Blocked': '#b64201',
+                                    'Potentially Blocked': '#db8200',
+                                    'Unknown': '#4a4a4a'
+                                },
+                                barmode="stack",
+                                height=700,
+                                labels={"num_flows": "Number of Flows based on Provider App Groups"}
+                            ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#1c2841", plot_bgcolor="#1c2841", newshape_line_width=1, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
+                            .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
+                        )
+            ]
+
+        # for provider is iplist dataframe
+        if "provider_iplist" in dff and "num_flows" in dff:
+            return [
+                dcc.Graph(id='bar-chart',
+                            figure=px.bar(
+                                data_frame=dff,
+                                x='num_flows',
+                                y="provider_iplist",
+                                color="reported_policy_decision",
+                                color_discrete_map={
+                                    'Allowed': '#508104',
+                                    'Blocked': '#b64201',
+                                    'Potentially Blocked': '#db8200',
+                                    'Unknown': '#4a4a4a'
+                                },
+                                barmode="stack",
+                                height=700,
+                                labels={"num_flows": "Number of Flows based on Consumer App Groups"}
+                            ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#242a44", plot_bgcolor="#242a44", newshape_line_width=4, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
+                            .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
+                        )
+            ]
+
+
+start = 0
+parser = argparse.ArgumentParser()
+parser.add_argument("-b", "--both", help="import explorer reports and start web app, COMMAND: aggregator.py -b <file.csv> ",
+                    action="store_true")
+parser.add_argument("-i", "--imp", help="processing explorer reports only, COMMAND: aggregator.py -i <file.csv> ",
+                    action="store_true")
+parser.add_argument('files', nargs='*') 
+parser.add_argument("-w", "--web", help="start dash web app only, COMMAND: aggregator.py -w",
+                    action="store_true")
+args = parser.parse_args()
+
+if args.both:
+    print("\nImporting the reports, web app will be starting after this if there is no error...\n")
+elif args.imp:
+    print("\nImporting the report and processing...\n")
+    start = 1
+elif args.web:
+    print("\nStarting the dash web app only...\n")
+    start = 2
 
 # columns variable
 SRC_IPL_COLS = ['consumer_subnet', 'consumer_iplist', 'provider_appgroup_combined', 'provider_app', 'provider_env', 'provider_loc']
 DST_IPL_COLS = ['consumer_appgroup_combined', 'consumer_app', 'consumer_env', 'consumer_loc', 'provider_subnet', 'provider_iplist']
 common_cols = ['transmission', 'port', 'protocol', 'reported_policy_decision', 'reported_by', 'first_detected', 'last_detected', 'num_flows']
 
-# Process formatter
-datestr = date.today().strftime("%Y%m%d")
-path = "reports/"
-updated_df, system_or_draft = combine_aggroup_column(csv_formatter(df))
+if start != 2:
+# init check
+    try: 
+        if stat(argv[2]).st_size == 0:
+            print("File is invalid or 0 byte.")
+            exit(1)
+        elif 'csv' in argv[2]:
+            df = pd.read_csv(argv[2], low_memory=False)
+            if df.columns[0] == 'Consumer IP': # first column always this 
+                pass
+            else:
+                print("File is invalid or 0 byte.")
+                exit(1)
+        else:
+            print("File is invalid or 0 byte.")
+            exit(1)
+    except Exception:
+        print("File is invalid or 0 byte.")
+        exit(1)
 
-# Reporting
-df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result = determine_iplist_or_vens_rows(updated_df, system_or_draft)
+    # Process formatter
+    datestr = date.today().strftime("%Y%m%d")
+    path = "reports/"
+    updated_df, system_or_draft = combine_aggroup_column(csv_formatter(df))
 
-reports_output(consumer_as_iplist_result(df_src_iplist_result), provider_as_iplist_result(df_dst_iplist_result), both_vens_result(df_both_vens_intrascope_result), both_vens_result(df_both_vens_extrascope_result))
+    # Reporting
+    df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result = determine_iplist_or_vens_rows(updated_df, system_or_draft)
 
-# Start dash web app, App layout
-app = dash.Dash(__name__, prevent_initial_callbacks=True, suppress_callback_exceptions=True)
+    reports_output(consumer_as_iplist_result(df_src_iplist_result), provider_as_iplist_result(df_dst_iplist_result), both_vens_result(df_both_vens_intrascope_result), both_vens_result(df_both_vens_extrascope_result))
 
-# Upload function
-app.layout = html.Div([
-    dcc.Upload(
-        id='upload-data',
-        children=html.Div([
-            'Drag and Drop or ',
-            html.A('Select Files'),
-            html.Br(),
-            'Refresh page before uploading a CSV'
-        ]),
-        style={
-            'width': '100%',
-            'height': '60px',
-            'lineHeight': '60px',
-            'borderWidth': '1px',
-            'borderStyle': 'dashed',
-            'borderRadius': '5px',
-            'textAlign': 'center',
-            'margin': '10px', 
-            'font-family': '-apple-system, BlinkMacSystemFont, sans-serif',
-            'color' :'#DFDEDF',
-            'fontWeight': 'bold'
-        },
-        # Allow multiple files to be uploaded
-        multiple=True
-    ),
-    html.Div(id='output-data-upload'),
-])
+if start != 1:
+    # Start dash web app, App layout
+    app = dash.Dash(__name__, prevent_initial_callbacks=True, suppress_callback_exceptions=True)
 
-# Dash-table call the table output to parse_contents function
-@app.callback(Output('output-data-upload', 'children'),
-              Input('upload-data', 'contents'),
-              State('upload-data', 'filename'))
-def update_output(list_of_contents, list_of_names):
-    if list_of_contents is not None:
-        children = [
-            parse_contents(c, n) for c, n in
-            zip(list_of_contents, list_of_names)]
-        return children
+    # Populate the file upload function on the web
+    app_layout = upload_function()
 
-# Create bar chart
-@app.callback(
-    Output(component_id='bar-container', component_property='children'),
-    [Input(component_id='datatable-interactivity', component_property="derived_virtual_data"),
-     Input(component_id='datatable-interactivity', component_property='derived_virtual_selected_rows'),
-     Input(component_id='datatable-interactivity', component_property='derived_virtual_selected_row_ids'),
-     Input(component_id='datatable-interactivity', component_property='selected_rows'),
-     Input(component_id='datatable-interactivity', component_property='derived_virtual_indices'),
-     Input(component_id='datatable-interactivity', component_property='derived_virtual_row_ids'),
-     Input(component_id='datatable-interactivity', component_property='active_cell'),
-     Input(component_id='datatable-interactivity', component_property='selected_cells'),
-     Input(component_id='datatable-interactivity', component_property='selected_row_ids')]
-)
-def update_bar(all_rows_data, slctd_row_indices, slct_rows_names, slctd_rows,
-               order_of_rows_indices, order_of_rows_names, actv_cell, slctd_cell, selected_row_ids):
-    print('***************************************************************************')
-    print('Data across all pages pre or post filtering: {}'.format(all_rows_data))
-    print('---------------------------------------------')
-    print("Indices of selected rows if part of table after filtering:{}".format(slctd_row_indices))
-    print("Names of selected rows if part of table after filtering: {}".format(slct_rows_names))
-    print("Indices of selected rows regardless of filtering results: {}".format(slctd_rows))
-    print('---------------------------------------------')
-    print("Indices of all rows pre or post filtering: {}".format(order_of_rows_indices))
-    print("Names of all rows pre or post filtering: {}".format(order_of_rows_names))
-    print("---------------------------------------------")
-    print("Complete data of active cell: {}".format(actv_cell))
-    print("Complete data of all selected cells: {}".format(slctd_cell))
+    # Processing dash_table and bar chart
+    bar_chart_output(dash_table_output(app_layout))
 
-    dff = pd.DataFrame(all_rows_data)
-    # Ref: https://github.com/Coding-with-Adam/Dash-by-Plotly/blob/master/DataTable/datatable_intro_and_sort.py
-    # highlight the color when select the row and click the column
-    # selected_id_set = set(selected_row_ids or [])
-    # active_row_id = actv_cell['row_id'] if actv_cell else None
-    # colors = ['#FF69B4' if id == active_row_id  
-    #           else '#45cbff' if id in selected_id_set
-    #           else '#0a075d'
-    #           for id in range(len(dff))]
-
-    # for intrascope and extrascope dataframe
-    if "consumer_appgroup_combined" in dff and "provider_appgroup_combined" in dff and "num_flows" in dff:
-        return [
-            dcc.Graph(id='bar-chart',
-                        figure=px.bar(
-                            data_frame=dff,
-                            x='num_flows',
-                            y="consumer_appgroup_combined",
-                            color="reported_policy_decision",
-                            color_discrete_map={
-                                'Allowed': '#508104',
-                                'Blocked': '#b64201',
-                                'Potentially Blocked': '#db8200',
-                                'Unknown': '#4a4a4a'
-                            },
-                            barmode="stack",
-                            height=700,
-                            labels={"num_flows": "Number of Flows based on Provider App Groups"}
-                        ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#1c2841", plot_bgcolor="#1c2841", newshape_line_width=1, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
-                        .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
-                    )
-        ]
-    
-    # for consumer is iplist dataframe
-    if "consumer_iplist" in dff and "num_flows" in dff:
-        return [
-            dcc.Graph(id='bar-chart',
-                        figure=px.bar(
-                            data_frame=dff,
-                            x='num_flows',
-                            y="consumer_iplist",
-                            color="reported_policy_decision",
-                            color_discrete_map={
-                                'Allowed': '#508104',
-                                'Blocked': '#b64201',
-                                'Potentially Blocked': '#db8200',
-                                'Unknown': '#4a4a4a'
-                            },
-                            barmode="stack",
-                            height=700,
-                            labels={"num_flows": "Number of Flows based on Provider App Groups"}
-                        ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#1c2841", plot_bgcolor="#1c2841", newshape_line_width=1, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
-                        .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
-                    )
-        ]
-
-    # for provider is iplist dataframe
-    if "provider_iplist" in dff and "num_flows" in dff:
-        return [
-            dcc.Graph(id='bar-chart',
-                        figure=px.bar(
-                            data_frame=dff,
-                            x='num_flows',
-                            y="provider_iplist",
-                            color="reported_policy_decision",
-                            color_discrete_map={
-                                'Allowed': '#508104',
-                                'Blocked': '#b64201',
-                                'Potentially Blocked': '#db8200',
-                                'Unknown': '#4a4a4a'
-                            },
-                            barmode="stack",
-                            height=700,
-                            labels={"num_flows": "Number of Flows based on Consumer App Groups"}
-                        ).update_layout(showlegend=True, xaxis={'categoryorder': 'total ascending'}, paper_bgcolor="#242a44", plot_bgcolor="#242a44", newshape_line_width=4, font_family='Open Sans, sans-serif', font_color='#FFFFFF')
-                        .update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
-                    )
-        ]
-
-# run the dash app
-if __name__ == '__main__':
-    app.run_server(debug=True)
-    
+    # run the dash app
+    if __name__ == '__main__':
+        app.run_server(debug=True)
+            

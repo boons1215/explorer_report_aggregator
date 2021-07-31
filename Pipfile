@@ -12,6 +12,7 @@ dash-html-components = "*"
 datetime = "*"
 dash-table = "*"
 "plotly.express" = "*"
+argparse = "*"
 
 [dev-packages]
 
