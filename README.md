@@ -1,5 +1,5 @@
 # explorer_report_aggregator
-Support PCE 21.x version
+Support PCE 21.x explorer report format only
 
 # Installing pipenv:
 pip install --upgrade setuptools wheel
