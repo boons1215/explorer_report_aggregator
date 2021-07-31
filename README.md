@@ -15,6 +15,26 @@ pipenv install -r requirements.txt
 pipenv run python aggregator.py <explorer_csv_file>
 
 # Instructions:
+```
+❯ pipenv run python aggregator.py -h
+usage: aggregator.py [-h] [-b] [-i] [-w] [files ...]
+
+positional arguments:
+  files
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -b, --both  import explorer reports and start web app, COMMAND: aggregator.py -b <file.csv>
+  -i, --imp   processing explorer reports only, COMMAND: aggregator.py -i <file.csv>
+  -w, --web   start dash web app only, COMMAND: aggregator.py -w
+```
+
+Example:
+```
+❯ pipenv run python aggregator.py -b data/rawreports.csv          
+```
+
+
 After the scripts executed, check out /reports directory.
 There are at least 5 files created:
 - updated_raw_<date>.csv -> report after data processing from the imported csv file
