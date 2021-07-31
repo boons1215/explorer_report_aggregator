@@ -1,5 +1,10 @@
 # explorer_report_aggregator
-Support PCE 21.x explorer report format only
+The purpose of this script is spliting the raw reports which extracted from explorer into 4 separate csv files and reformat the csv contents/headers.
+Such as: intrascope, extrascope, consumer is iplist, provider is iplist.
+
+This script uses Plotly dash-table for visualing the number of flows based on each provider app groups.
+Support the PCE 21.x explorer report format only.
+
 
 # Installing pipenv:
 ```
