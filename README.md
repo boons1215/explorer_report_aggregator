@@ -1,18 +1,19 @@
 # explorer_report_aggregator
 
-Installing pipenv:
-# pip install --upgrade setuptools wheel
-# pip install --user pipenv
+# Installing pipenv:
+pip install --upgrade setuptools wheel
+pip install --user pipenv
 
-Navigate to the directory and run:
-# pipenv shell
+# Navigate to the directory and run:
+pipenv shell
 
-Run the requirements.txt file:
-# pipenv install -r requirements.txt
+# Run the requirements.txt file:
+pipenv install -r requirements.txt
 
-Run the script:
-# pipenv run python aggregator.py <explorer_csv_file>
+# Run the script:
+pipenv run python aggregator.py <explorer_csv_file>
 
+# Instructions:
 After the scripts executed, check out /reports directory.
 There are at least 5 files created:
 - updated_raw_<date>.csv -> report after data processing from the imported csv file
