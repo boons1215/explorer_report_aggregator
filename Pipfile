@@ -9,6 +9,9 @@ pandas = "*"
 numpy = "*"
 dash-core-components = "*"
 dash-html-components = "*"
+datetime = "*"
+dash-table = "*"
+"plotly.express" = "*"
 
 [dev-packages]
 
