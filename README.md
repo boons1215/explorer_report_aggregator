@@ -2,17 +2,20 @@
 Support PCE 21.x explorer report format only
 
 # Installing pipenv:
+```
 pip install --upgrade setuptools wheel
 pip install --user pipenv
+```
 
 # Navigate to the directory and run:
+```
 pipenv shell
+```
 
 # Run the requirements.txt file:
+```
 pipenv install -r requirements.txt
-
-# Run the script:
-pipenv run python aggregator.py <explorer_csv_file>
+```
 
 # Instructions:
 ```
