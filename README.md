@@ -6,8 +6,8 @@ This script uses Plotly dash-table for visualing the number of flows based on ea
 Support the PCE 21.x explorer report format only.
 
 Reference:
-https://dash.plotly.com/datatable
-https://github.com/Coding-with-Adam/Dash-by-Plotly/blob/master/DataTable/datatable_intro_and_sort.py
+- https://dash.plotly.com/datatable
+- https://github.com/Coding-with-Adam/Dash-by-Plotly/blob/master/DataTable/datatable_intro_and_sort.py
 
 
 # Installing pipenv:
