@@ -24,6 +24,14 @@ There are at least 5 files created:
 - extrascope_agg_report<date>.csv -> extrascope report
 
 Dash web app will be running after processing, navigate to http://127.0.0.1:8050/ then import the csv file.
-
   
 ![Alt text](https://github.com/boons1215/explorer_report_aggregator/blob/main/mainpage.png)
+
+Dash table output:
+You could toggle column that you want to see, either hide or sort it. 
+By clicking the export button, you could export the current table output.
+![Alt text](https://github.com/boons1215/explorer_report_aggregator/blob/main/dashtable.png)
+  
+Bar chart output:
+![Alt text](https://github.com/boons1215/explorer_report_aggregator/blob/main/barchart.png)
+  
