@@ -1,6 +1,6 @@
 # explorer_report_aggregator
 The purpose of this script is spliting the raw reports which extracted from explorer into 4 separate csv files and reformat the csv contents/headers.
-Such as: intrascope, extrascope, consumer is iplist, provider is iplist. With the output, we could quickly identify which app-groups or iplists are consuming more flows to the provider-appgroup.
+Such as: intrascope, extrascope, consumer is iplist, provider is iplist. With the output, we could quickly identify which app-groups or iplists are consuming more flows to the provider-appgroup by aggregating the flow types and number of flows.
 
 This script uses Plotly dash-table for visualing the number of flows based on each provider app groups.
 Support the PCE 21.x explorer report format only.
