@@ -205,7 +205,7 @@ def parse_contents(contents, filename):
                     {
                         'if': {'column_id': c},
                         'textAlign': 'right',
-                        'minWidth': '330px'
+                        'minWidth': '380px'
                     } for c in ['consumer_appgroup_combined', 'provider_appgroup_combined']
                 ] + 
                 [    # align text columns to left. By default they are aligned to right
@@ -259,7 +259,7 @@ def parse_contents(contents, filename):
                         'if': {
                             'filter_query': '{reported_policy_decision} = "Unknown"', 
                         },
-                        'color': '#4a4a4a'
+                        'color': '#a8a8a8'
                     },
                     {   # identify the draft policy decision, "Blocked" is red      
                         'if': {
@@ -357,6 +357,8 @@ def bar_chart_output(table_layout):
         print("---------------------------------------------")
         print("Complete data of active cell: {}".format(actv_cell))
         print("Complete data of all selected cells: {}".format(slctd_cell))
+        print('Total number of rows after post filtering: {}'.format(len(all_rows_data)))
+        print('---------------------------------------------')
 
         dff = pd.DataFrame(all_rows_data)
         # Ref: https://github.com/Coding-with-Adam/Dash-by-Plotly/blob/master/DataTable/datatable_intro_and_sort.py
