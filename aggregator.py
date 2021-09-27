@@ -42,6 +42,7 @@ def combine_aggroup_column(df):
     # 0 is system, 1 is draft, default is 1
     # in 21.2, there is backend report which not having draft policy decision column and report upto 200k
     # Explorer gernerated report has draft policy and only upto 100k
+    # in 21.3, there is an additional column named "Consumer FQDN"
     system_or_draft = 1
     if "consumer_subnet" in list(df.columns.values) and "reported_policy_decision" in list(df.columns.values) and "draft_policy_decision" not in list(df.columns.values):
         print("\nNOTE: The imported report is returned from the database directly in PCE 21.2.")
@@ -55,8 +56,8 @@ def determine_iplist_or_vens_rows(df, system_or_draft):
     # backup updated raw csv file
     df.to_csv(path + "updated_raw_" + datestr + ".csv", index=False)
     # if either one column below is NaN, identify the row has iplist
-    df_src_iplist = df.loc[(df['consumer_appgroup_combined'].isna()) & (df['provider_appgroup_combined'].notna())]
-    df_dst_iplist = df.loc[(df['consumer_appgroup_combined'].notna()) & (df['provider_appgroup_combined'].isna())]
+    df_src_iplist = df.loc[(df['consumer_appgroup_combined'].isna()) & (df['consumer_iplist'].notna())]
+    df_dst_iplist = df.loc[(df['provider_iplist'].notna()) & (df['provider_appgroup_combined'].isna())]
 
     if system_or_draft == 0:
         # sanitize the output for consumer iplist rows
@@ -93,6 +94,7 @@ def consumer_as_iplist_result(df_src_iplist_result):
     # sorting
     df_src_iplist_result.sort_values(cols, ascending=number_of_sort, inplace=True)
     # aggregate the common flows then list the first detected and last detected with a sum of num of flows
+
     df_src_iplist_result = df_src_iplist_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_src_iplist_result
@@ -494,6 +496,7 @@ if start != 2:
     df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result = determine_iplist_or_vens_rows(updated_df, system_or_draft)
 
     reports_output(consumer_as_iplist_result(df_src_iplist_result), provider_as_iplist_result(df_dst_iplist_result), both_vens_result(df_both_vens_intrascope_result), both_vens_result(df_both_vens_extrascope_result))
+
 
 if start != 1:
     # Start dash web app, App layout
