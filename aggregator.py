@@ -91,10 +91,13 @@ def consumer_as_iplist_result(df_src_iplist_result):
     cols = SRC_IPL_COLS + common_cols[:-3]
     number_of_sort = len(cols) * ["True"]
 
+   # replace nan as Unknown when VEN is in Idle mode
+    df_src_iplist_result['reported_by'] = df_src_iplist_result['reported_by'].fillna('Unknown')
+
     # sorting
     df_src_iplist_result.sort_values(cols, ascending=number_of_sort, inplace=True)
-    # aggregate the common flows then list the first detected and last detected with a sum of num of flows
 
+    # aggregate the common flows then list the first detected and last detected with a sum of num of flows
     df_src_iplist_result = df_src_iplist_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
 
     return df_src_iplist_result
@@ -106,25 +109,34 @@ def provider_as_iplist_result(df_dst_iplist_result):
     cols = DST_IPL_COLS + common_cols[:-3]
     number_of_sort = len(cols) * ["True"]
 
+   # replace nan as Unknown when VEN is in Idle mode
+    df_dst_iplist_result['reported_by'] = df_dst_iplist_result['reported_by'].fillna('Unknown')
+
     # sorting
     df_dst_iplist_result.sort_values(cols, ascending=number_of_sort, inplace=True)
+
     # aggregate the common flows then list the first detected and last detected with a sum of num of flows
     df_dst_iplist_result = df_dst_iplist_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
-
+    
     return df_dst_iplist_result
 
 def both_vens_result(df_both_vens):
     # sanitize the output for both sides are VENs
-    df_both_vens_result = df_both_vens.copy()
+    cols = DST_IPL_COLS[0:4] + SRC_IPL_COLS[2:3] + SRC_IPL_COLS[3::] + common_cols
+    df_both_vens_result = df_both_vens[cols].copy()
 
     cols = DST_IPL_COLS[0:4] + SRC_IPL_COLS[2:3] + SRC_IPL_COLS[3::] + common_cols[:-3]
     number_of_sort = len(cols) * ["True"]
 
+    # replace nan as Unknown when VEN is in Idle mode
+    df_both_vens_result['reported_by'] = df_both_vens_result['reported_by'].fillna('Unknown')
+
     # sorting
     df_both_vens_result.sort_values(cols, ascending=number_of_sort, inplace=True)
+
     # aggregate the common flows then list the first detected and last detected with a sum of num of flows
     df_both_vens_result = df_both_vens_result.groupby(cols, axis=0, as_index=True).agg(first_detected=('first_detected', min), last_detected=('last_detected', max), num_flows=('num_flows', sum))
-
+    
     return df_both_vens_result
 
 def reports_output(consumer_iplist_report, provider_iplist_report, intrascope_report, extrascope_report):
@@ -496,7 +508,6 @@ if start != 2:
     df_src_iplist_result, df_dst_iplist_result, df_both_vens_result, df_both_vens_intrascope_result, df_both_vens_extrascope_result = determine_iplist_or_vens_rows(updated_df, system_or_draft)
 
     reports_output(consumer_as_iplist_result(df_src_iplist_result), provider_as_iplist_result(df_dst_iplist_result), both_vens_result(df_both_vens_intrascope_result), both_vens_result(df_both_vens_extrascope_result))
-
 
 if start != 1:
     # Start dash web app, App layout
