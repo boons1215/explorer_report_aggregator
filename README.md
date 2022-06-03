@@ -1,4 +1,7 @@
 # explorer_report_aggregator
+
+NOT WORKING FOR 22.x at the moment.
+
 A real aggregator to aggregate flows that matching the same consumer, provider and ports. This allows user has a quick view on the traffic data to find out which flow pair is the top-talker.
 
 The purpose of this script is spliting the raw reports which extracted from explorer into 4 separate csv files and reformat the csv contents/headers.
