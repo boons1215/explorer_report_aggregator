@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 dash = "*"
 pandas = "*"
-numpy = "*"
+numpy = ">=1.22"
 dash-core-components = "*"
 dash-html-components = "*"
 datetime = "*"
